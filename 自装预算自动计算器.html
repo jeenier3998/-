@@ -1,0 +1,854 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta name="x-poe-datastore-behavior" content="local_only"><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>自装预算自动计算器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: "Microsoft YaHei", "SimSun", Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.9;
+        }
+        
+        .controls {
+            background: #f8f9fa;
+            padding: 25px;
+            border-bottom: 3px solid #667eea;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .control-group label {
+            font-weight: 600;
+            color: #333;
+            white-space: nowrap;
+        }
+        
+        .control-group select,
+        .control-group input {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            min-width: 150px;
+            transition: all 0.3s;
+        }
+        
+        .control-group select:focus,
+        .control-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            padding: 10px 25px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            padding: 25px;
+            background: #f8f9fa;
+        }
+        
+        .summary-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+        
+        .summary-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        
+        .summary-card h3 {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .summary-card .amount {
+            font-size: 32px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 10px 0;
+        }
+        
+        .summary-card .percentage {
+            font-size: 14px;
+            color: #999;
+        }
+        
+        .table-container {
+            padding: 25px;
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 13px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+        }
+        
+        tr:hover {
+            background: #f8f9ff;
+        }
+        
+        .category-row {
+            background: #f8f9fa !important;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .category-row td {
+            padding: 15px 10px;
+            border-top: 2px solid #ddd;
+            border-bottom: 2px solid #ddd;
+        }
+        
+        .subtotal-row {
+            background: #e8f5e9 !important;
+            font-weight: 600;
+        }
+        
+        .total-row {
+            background: #667eea !important;
+            color: white !important;
+            font-weight: bold;
+            font-size: 15px;
+        }
+        
+        .total-row td {
+            padding: 18px 10px;
+        }
+        
+        input[type="number"] {
+            width: 80px;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            text-align: right;
+            font-size: 13px;
+        }
+        
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #667eea;
+            background: #f8f9ff;
+        }
+        
+        .editable {
+            background: #fffde7;
+        }
+        
+        .calculated {
+            font-weight: 600;
+            color: #667eea;
+        }
+        
+        .export-section {
+            padding: 25px;
+            background: #f8f9fa;
+            border-top: 3px solid #667eea;
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .tips-section {
+            padding: 25px;
+            background: #e3f2fd;
+            border-left: 5px solid #2196f3;
+            margin: 25px;
+            border-radius: 8px;
+        }
+        
+        .tips-section h3 {
+            color: #1976d2;
+            margin-bottom: 15px;
+        }
+        
+        .tips-section ul {
+            margin-left: 20px;
+        }
+        
+        .tips-section li {
+            margin: 8px 0;
+            color: #555;
+        }
+        
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .controls, .export-section, .btn {
+                display: none;
+            }
+            
+            .container {
+                box-shadow: none;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            table {
+                font-size: 11px;
+            }
+            
+            th, td {
+                padding: 8px 5px;
+            }
+            
+            input[type="number"] {
+                width: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏠 自装预算自动计算器</h1>
+            <p>实时计算 • 自由编辑 • 导出Excel • 专业预算规划</p>
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>🏘️ 建筑面积：</label>
+                <input type="number" id="area" value="100" min="50" max="200" step="1">
+                <span>㎡</span>
+            </div>
+            
+            <div class="control-group">
+                <label>💎 装修档次：</label>
+                <select id="level">
+                    <option value="economy">经济型（800-1100元/㎡）</option>
+                    <option value="comfort" selected="">舒适型（1200-1600元/㎡）</option>
+                    <option value="luxury">精装型（1800-2500元/㎡）</option>
+                </select>
+            </div>
+            
+            <button class="btn" onclick="resetDefault()">↺ 恢复默认</button>
+            <button class="btn" onclick="exportToExcel()">📊 导出Excel</button>
+            <button class="btn" onclick="window.print()">🖨️ 打印预算表</button>
+        </div>
+        
+        <div class="summary-cards">
+            <div class="summary-card">
+                <h3>总预算</h3>
+                <div class="amount" id="totalBudget">0</div>
+                <div class="percentage">100%</div>
+            </div>
+            <div class="summary-card">
+                <h3>人工费</h3>
+                <div class="amount" id="laborTotal">0</div>
+                <div class="percentage" id="laborPercent">0%</div>
+            </div>
+            <div class="summary-card">
+                <h3>辅材费</h3>
+                <div class="amount" id="auxTotal">0</div>
+                <div class="percentage" id="auxPercent">0%</div>
+            </div>
+            <div class="summary-card">
+                <h3>主材费</h3>
+                <div class="amount" id="mainTotal">0</div>
+                <div class="percentage" id="mainPercent">0%</div>
+            </div>
+            <div class="summary-card">
+                <h3>其他费用</h3>
+                <div class="amount" id="otherTotal">0</div>
+                <div class="percentage" id="otherPercent">0%</div>
+            </div>
+            <div class="summary-card">
+                <h3>平米单价</h3>
+                <div class="amount" id="pricePerSqm">0</div>
+                <div class="percentage">元/㎡</div>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <table id="budgetTable">
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">序号</th>
+                        <th style="width: 20%;">项目名称</th>
+                        <th style="width: 8%;">单位</th>
+                        <th style="width: 10%;">工程量</th>
+                        <th style="width: 12%;">单价（元）</th>
+                        <th style="width: 12%;">小计（元）</th>
+                        <th style="width: 33%;">备注说明</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- 表格内容将由JavaScript生成 -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="tips-section">
+            <h3>💡 使用说明</h3>
+            <ul>
+                <li><strong>修改面积：</strong>在顶部输入实际建筑面积，系统会自动按比例调整工程量和总预算</li>
+                <li><strong>切换档次：</strong>选择不同装修档次，单价会自动更新</li>
+                <li><strong>手动编辑：</strong>黄色单元格可以直接修改，修改后会自动重新计算总价</li>
+                <li><strong>导出Excel：</strong>点击"导出Excel"按钮，生成CSV文件，可用Excel打开</li>
+                <li><strong>打印保存：</strong>点击"打印预算表"可以保存为PDF或打印</li>
+                <li><strong>恢复默认：</strong>点击"恢复默认"可以重置所有数据</li>
+            </ul>
+        </div>
+        
+        <div class="export-section">
+            <button class="btn" onclick="saveToLocalStorage()">💾 保存当前预算</button>
+            <button class="btn" onclick="loadFromLocalStorage()">📂 加载已保存预算</button>
+            <button class="btn" onclick="clearLocalStorage()">🗑️ 清除保存数据</button>
+        </div>
+        
+        <div style="padding: 25px; text-align: center; color: #999; font-size: 13px; border-top: 1px solid #eee;">
+            <p>本预算表基于2026年1月市场价格编制，价格会随市场波动，仅供参考</p>
+            <p style="margin-top: 8px;">建议：预留总预算的10%作为机动费用，应对突发情况</p>
+        </div>
+    </div>
+    
+    <script>
+        // 基础预算数据结构（基于100平米）
+        const baseData = {
+            economy: {
+                // 人工费
+                demolition: { name: '拆除清运', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 3000, note: '墙体拆除、地面砖拆除、垃圾清运' },
+                electrical: { name: '水电改造', unit: '㎡', baseQuantity: 100, quantityType: 'area', price: 80, note: '强电、弱电、水路改造、防水' },
+                masonry: { name: '泥工施工', unit: '㎡', baseQuantity: 75, quantityType: 'ratio', price: 75, note: '地面找平、墙地砖铺贴、砌墙' },
+                carpentry: { name: '木工施工', unit: '㎡', baseQuantity: 40, quantityType: 'ratio', price: 90, note: '吊顶、背景墙造型' },
+                painting: { name: '油漆施工', unit: '㎡', baseQuantity: 230, quantityType: 'ratio', price: 28, note: '墙面基层处理、乳胶漆施工' },
+                installation: { name: '安装类', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 1200, note: '洁具、灯具、五金安装' },
+                
+                // 辅材费
+                elecAux: { name: '水电辅材', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 6000, note: '电线、水管、开关插座、配件' },
+                masonryAux: { name: '泥工辅材', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 3800, note: '水泥、河沙、瓷砖胶、防水涂料' },
+                carpentryAux: { name: '木工辅材', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 2200, note: '龙骨、石膏板、木方、五金' },
+                paintingAux: { name: '油漆辅材', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 1500, note: '腻子粉、石膏粉、界面剂、网格布' },
+                
+                // 主材费
+                floorTile: { name: '客厅地砖', unit: '㎡', baseQuantity: 45, quantityType: 'ratio', price: 80, note: '马可波罗、东鹏等国产品牌' },
+                bedroomFloor: { name: '卧室地板', unit: '㎡', baseQuantity: 35, quantityType: 'ratio', price: 100, note: '圣象、大自然等强化地板' },
+                kitchenTile: { name: '厨房墙地砖', unit: '㎡', baseQuantity: 26, quantityType: 'ratio', price: 55, note: '防滑砖' },
+                bathroomTile: { name: '卫生间墙地砖', unit: '㎡', baseQuantity: 29, quantityType: 'ratio', price: 65, note: '防水防滑砖' },
+                paint: { name: '乳胶漆', unit: '桶', baseQuantity: 5, quantityType: 'ratio', price: 400, note: '多乐士、立邦等' },
+                door: { name: '室内门', unit: '套', baseQuantity: 4, quantityType: 'fixed', price: 1000, note: 'TATA、梦天等' },
+                window: { name: '封窗', unit: '㎡', baseQuantity: 20, quantityType: 'ratio', price: 500, note: '断桥铝窗' },
+                cabinet: { name: '橱柜', unit: '米', baseQuantity: 5, quantityType: 'fixed', price: 1000, note: '欧派、志邦等' },
+                wardrobe: { name: '衣柜', unit: '㎡', baseQuantity: 18, quantityType: 'ratio', price: 750, note: '索菲亚、欧派等' },
+                bathroom: { name: '卫浴洁具', unit: '套', baseQuantity: 1, quantityType: 'fixed', price: 6500, note: '马桶、花洒、浴室柜等' },
+                kitchen: { name: '厨房电器', unit: '套', baseQuantity: 1, quantityType: 'fixed', price: 8000, note: '油烟机、灶具、水槽等' },
+                lighting: { name: '灯具', unit: '套', baseQuantity: 1, quantityType: 'fixed', price: 2000, note: '全屋灯具' },
+                
+                // 其他费用
+                property: { name: '物业费用', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 2500, note: '装修押金+管理费' },
+                curtain: { name: '窗帘', unit: '套', baseQuantity: 1, quantityType: 'fixed', price: 3000, note: '全屋窗帘' },
+                cleaning: { name: '检测保洁', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 650, note: '空气检测+开荒保洁' },
+                reserve: { name: '机动费用', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 6000, note: '预留5-10%应对突发情况' }
+            },
+            comfort: {
+                demolition: { name: '拆除清运', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 4200, note: '墙体拆除、地面砖拆除、垃圾清运' },
+                electrical: { name: '水电改造', unit: '㎡', baseQuantity: 100, quantityType: 'area', price: 105, note: '强电、弱电、水路改造、防水' },
+                masonry: { name: '泥工施工', unit: '㎡', baseQuantity: 75, quantityType: 'ratio', price: 95, note: '地面找平、墙地砖铺贴、砌墙' },
+                carpentry: { name: '木工施工', unit: '㎡', baseQuantity: 40, quantityType: 'ratio', price: 110, note: '吊顶、背景墙造型' },
+                painting: { name: '油漆施工', unit: '㎡', baseQuantity: 230, quantityType: 'ratio', price: 37, note: '墙面基层处理、乳胶漆施工' },
+                installation: { name: '安装类', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 1600, note: '洁具、灯具、五金安装' },
+                
+                elecAux: { name: '水电辅材', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 8800, note: '电线、水管、开关插座、配件' },
+                masonryAux: { name: '泥工辅材', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 5500, note: '水泥、河沙、瓷砖胶、防水涂料' },
+                carpentryAux: { name: '木工辅材', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 3300, note: '龙骨、石膏板、木方、五金' },
+                paintingAux: { name: '油漆辅材', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 2300, note: '腻子粉、石膏粉、界面剂、网格布' },
+                
+                floorTile: { name: '客厅地砖', unit: '㎡', baseQuantity: 45, quantityType: 'ratio', price: 140, note: '诺贝尔、马可波罗等' },
+                bedroomFloor: { name: '卧室地板', unit: '㎡', baseQuantity: 35, quantityType: 'ratio', price: 160, note: '圣象、大自然实木复合' },
+                kitchenTile: { name: '厨房墙地砖', unit: '㎡', baseQuantity: 26, quantityType: 'ratio', price: 95, note: '防滑砖' },
+                bathroomTile: { name: '卫生间墙地砖', unit: '㎡', baseQuantity: 29, quantityType: 'ratio', price: 115, note: '防水防滑砖' },
+                paint: { name: '乳胶漆', unit: '桶', baseQuantity: 5, quantityType: 'ratio', price: 650, note: '多乐士、立邦高端系列' },
+                door: { name: '室内门', unit: '套', baseQuantity: 4, quantityType: 'fixed', price: 1600, note: 'TATA、梦天等' },
+                window: { name: '封窗', unit: '㎡', baseQuantity: 20, quantityType: 'ratio', price: 750, note: '断桥铝窗' },
+                cabinet: { name: '橱柜', unit: '米', baseQuantity: 5, quantityType: 'fixed', price: 1600, note: '欧派、志邦等' },
+                wardrobe: { name: '衣柜', unit: '㎡', baseQuantity: 18, quantityType: 'ratio', price: 1200, note: '索菲亚、欧派等' },
+                bathroom: { name: '卫浴洁具', unit: '套', baseQuantity: 1, quantityType: 'fixed', price: 12000, note: '箭牌、九牧等' },
+                kitchen: { name: '厨房电器', unit: '套', baseQuantity: 1, quantityType: 'fixed', price: 15000, note: '方太、老板等' },
+                lighting: { name: '灯具', unit: '套', baseQuantity: 1, quantityType: 'fixed', price: 4200, note: '全屋灯具' },
+                
+                property: { name: '物业费用', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 3000, note: '装修押金+管理费' },
+                curtain: { name: '窗帘', unit: '套', baseQuantity: 1, quantityType: 'fixed', price: 6000, note: '全屋窗帘' },
+                cleaning: { name: '检测保洁', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 800, note: '空气检测+开荒保洁' },
+                reserve: { name: '机动费用', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 10000, note: '预留5-10%应对突发情况' }
+            },
+            luxury: {
+                demolition: { name: '拆除清运', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 5500, note: '墙体拆除、地面砖拆除、垃圾清运' },
+                electrical: { name: '水电改造', unit: '㎡', baseQuantity: 100, quantityType: 'area', price: 145, note: '强电、弱电、水路改造、防水' },
+                masonry: { name: '泥工施工', unit: '㎡', baseQuantity: 75, quantityType: 'ratio', price: 120, note: '地面找平、墙地砖铺贴、砌墙' },
+                carpentry: { name: '木工施工', unit: '㎡', baseQuantity: 40, quantityType: 'ratio', price: 130, note: '吊顶、背景墙造型' },
+                painting: { name: '油漆施工', unit: '㎡', baseQuantity: 230, quantityType: 'ratio', price: 48, note: '墙面基层处理、乳胶漆施工' },
+                installation: { name: '安装类', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 2200, note: '洁具、灯具、五金安装' },
+                
+                elecAux: { name: '水电辅材', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 12000, note: '电线、水管、开关插座、配件' },
+                masonryAux: { name: '泥工辅材', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 7800, note: '水泥、河沙、瓷砖胶、防水涂料' },
+                carpentryAux: { name: '木工辅材', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 4800, note: '龙骨、石膏板、木方、五金' },
+                paintingAux: { name: '油漆辅材', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 3500, note: '腻子粉、石膏粉、界面剂、网格布' },
+                
+                floorTile: { name: '客厅地砖', unit: '㎡', baseQuantity: 45, quantityType: 'ratio', price: 260, note: '进口瓷砖、高端品牌' },
+                bedroomFloor: { name: '卧室地板', unit: '㎡', baseQuantity: 35, quantityType: 'ratio', price: 300, note: '实木地板' },
+                kitchenTile: { name: '厨房墙地砖', unit: '㎡', baseQuantity: 26, quantityType: 'ratio', price: 180, note: '高端防滑砖' },
+                bathroomTile: { name: '卫生间墙地砖', unit: '㎡', baseQuantity: 29, quantityType: 'ratio', price: 220, note: '高端防水防滑砖' },
+                paint: { name: '乳胶漆', unit: '桶', baseQuantity: 5, quantityType: 'ratio', price: 1100, note: '进口品牌' },
+                door: { name: '室内门', unit: '套', baseQuantity: 4, quantityType: 'fixed', price: 3000, note: '高端实木门' },
+                window: { name: '封窗', unit: '㎡', baseQuantity: 20, quantityType: 'ratio', price: 1200, note: '系统窗' },
+                cabinet: { name: '橱柜', unit: '米', baseQuantity: 5, quantityType: 'fixed', price: 3000, note: '高端定制' },
+                wardrobe: { name: '衣柜', unit: '㎡', baseQuantity: 18, quantityType: 'ratio', price: 2100, note: '高端定制' },
+                bathroom: { name: '卫浴洁具', unit: '套', baseQuantity: 1, quantityType: 'fixed', price: 25000, note: 'TOTO、科勒等' },
+                kitchen: { name: '厨房电器', unit: '套', baseQuantity: 1, quantityType: 'fixed', price: 32000, note: '方太、西门子等高端系列' },
+                lighting: { name: '灯具', unit: '套', baseQuantity: 1, quantityType: 'fixed', price: 10000, note: '智能照明系统' },
+                
+                property: { name: '物业费用', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 3500, note: '装修押金+管理费' },
+                curtain: { name: '窗帘', unit: '套', baseQuantity: 1, quantityType: 'fixed', price: 11000, note: '高端窗帘' },
+                cleaning: { name: '检测保洁', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 1100, note: '空气检测+开荒保洁' },
+                reserve: { name: '机动费用', unit: '项', baseQuantity: 1, quantityType: 'fixed', price: 16000, note: '预留5-10%应对突发情况' }
+            }
+        };
+        
+        // 当前选择的档次和面积
+        let currentLevel = 'comfort';
+        let currentArea = 100;
+        
+        // 初始化
+        function init() {
+            generateTable();
+            calculate();
+            
+            // 监听面积变化
+            document.getElementById('area').addEventListener('input', function() {
+                currentArea = parseFloat(this.value) || 100;
+                updateQuantitiesByArea();
+                calculate();
+            });
+            
+            // 监听档次变化
+            document.getElementById('level').addEventListener('change', function() {
+                currentLevel = this.value;
+                generateTable();
+                calculate();
+            });
+        }
+        
+        // 根据面积更新工程量
+        function updateQuantitiesByArea() {
+            const data = baseData[currentLevel];
+            const areaRatio = currentArea / 100; // 基于100平米的比例
+            
+            Object.keys(data).forEach(key => {
+                const item = data[key];
+                const quantityInput = document.querySelector(`.quantity[data-key="${key}"]`);
+                
+                if (quantityInput) {
+                    let newQuantity = item.baseQuantity;
+                    
+                    // 根据不同类型调整工程量
+                    if (item.quantityType === 'area') {
+                        // 直接按面积计算（如水电改造）
+                        newQuantity = currentArea;
+                    } else if (item.quantityType === 'ratio') {
+                        // 按比例计算（如地砖、墙面等）
+                        newQuantity = item.baseQuantity * areaRatio;
+                    } else if (item.quantityType === 'fixed') {
+                        // 固定数量（如门、套件等）
+                        newQuantity = item.baseQuantity;
+                    }
+                    
+                    quantityInput.value = newQuantity.toFixed(2);
+                }
+            });
+        }
+        
+        // 生成表格
+        function generateTable() {
+            const data = baseData[currentLevel];
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            
+            let index = 1;
+            
+            // 人工费
+            addCategoryRow(tbody, '一、人工费');
+            index = addDataRows(tbody, data, ['demolition', 'electrical', 'masonry', 'carpentry', 'painting', 'installation'], index);
+            addSubtotalRow(tbody, 'laborSubtotal', '人工费小计');
+            
+            // 辅材费
+            addCategoryRow(tbody, '二、辅材费');
+            index = addDataRows(tbody, data, ['elecAux', 'masonryAux', 'carpentryAux', 'paintingAux'], index);
+            addSubtotalRow(tbody, 'auxSubtotal', '辅材费小计');
+            
+            // 主材费
+            addCategoryRow(tbody, '三、主材费');
+            index = addDataRows(tbody, data, ['floorTile', 'bedroomFloor', 'kitchenTile', 'bathroomTile', 'paint', 'door', 'window', 'cabinet', 'wardrobe', 'bathroom', 'kitchen', 'lighting'], index);
+            addSubtotalRow(tbody, 'mainSubtotal', '主材费小计');
+            
+            // 其他费用
+            addCategoryRow(tbody, '四、其他费用');
+            index = addDataRows(tbody, data, ['property', 'curtain', 'cleaning', 'reserve'], index);
+            addSubtotalRow(tbody, 'otherSubtotal', '其他费用小计');
+            
+            // 总计
+            addTotalRow(tbody);
+            
+            // 初始化工程量
+            updateQuantitiesByArea();
+        }
+        
+        function addCategoryRow(tbody, title) {
+            const tr = document.createElement('tr');
+            tr.className = 'category-row';
+            tr.innerHTML = `<td colspan="7">${title}</td>`;
+            tbody.appendChild(tr);
+        }
+        
+        function addDataRows(tbody, data, keys, startIndex) {
+            let index = startIndex;
+            const areaRatio = currentArea / 100;
+            
+            keys.forEach(key => {
+                const item = data[key];
+                
+                // 根据面积计算初始工程量
+                let quantity = item.baseQuantity;
+                if (item.quantityType === 'area') {
+                    quantity = currentArea;
+                } else if (item.quantityType === 'ratio') {
+                    quantity = item.baseQuantity * areaRatio;
+                }
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${index}</td>
+                    <td>${item.name}</td>
+                    <td>${item.unit}</td>
+                    <td class="editable">
+                        <input type="number" class="quantity" data-key="${key}" value="${quantity.toFixed(2)}" step="0.1" onchange="calculate()">
+                    </td>
+                    <td class="editable">
+                        <input type="number" class="price" data-key="${key}" value="${item.price}" step="1" onchange="calculate()">
+                    </td>
+                    <td class="calculated subtotal-${key}">0</td>
+                    <td>${item.note}</td>
+                `;
+                tbody.appendChild(tr);
+                index++;
+            });
+            return index;
+        }
+        
+        function addSubtotalRow(tbody, id, title) {
+            const tr = document.createElement('tr');
+            tr.className = 'subtotal-row';
+            tr.innerHTML = `
+                <td colspan="5" style="text-align: right; padding-right: 20px;">${title}</td>
+                <td class="calculated" id="${id}">0</td>
+                <td></td>
+            `;
+            tbody.appendChild(tr);
+        }
+        
+        function addTotalRow(tbody) {
+            const tr = document.createElement('tr');
+            tr.className = 'total-row';
+            tr.innerHTML = `
+                <td colspan="5" style="text-align: right; padding-right: 20px;">【总预算】</td>
+                <td id="tableTotal">0</td>
+                <td></td>
+            `;
+            tbody.appendChild(tr);
+        }
+        
+        // 计算预算
+        function calculate() {
+            let laborTotal = 0;
+            let auxTotal = 0;
+            let mainTotal = 0;
+            let otherTotal = 0;
+            
+            // 遍历所有输入框计算小计
+            document.querySelectorAll('.quantity').forEach(input => {
+                const key = input.dataset.key;
+                const quantity = parseFloat(input.value) || 0;
+                const priceInput = document.querySelector(`.price[data-key="${key}"]`);
+                const price = parseFloat(priceInput.value) || 0;
+                const subtotal = quantity * price;
+                
+                // 更新小计显示
+                const subtotalCell = document.querySelector(`.subtotal-${key}`);
+                if (subtotalCell) {
+                    subtotalCell.textContent = subtotal.toFixed(2);
+                }
+                
+                // 累计到对应分类
+                if (['demolition', 'electrical', 'masonry', 'carpentry', 'painting', 'installation'].includes(key)) {
+                    laborTotal += subtotal;
+                } else if (['elecAux', 'masonryAux', 'carpentryAux', 'paintingAux'].includes(key)) {
+                    auxTotal += subtotal;
+                } else if (['floorTile', 'bedroomFloor', 'kitchenTile', 'bathroomTile', 'paint', 'door', 'window', 'cabinet', 'wardrobe', 'bathroom', 'kitchen', 'lighting'].includes(key)) {
+                    mainTotal += subtotal;
+                } else if (['property', 'curtain', 'cleaning', 'reserve'].includes(key)) {
+                    otherTotal += subtotal;
+                }
+            });
+            
+            const totalBudget = laborTotal + auxTotal + mainTotal + otherTotal;
+            
+            // 更新小计
+            document.getElementById('laborSubtotal').textContent = laborTotal.toFixed(2);
+            document.getElementById('auxSubtotal').textContent = auxTotal.toFixed(2);
+            document.getElementById('mainSubtotal').textContent = mainTotal.toFixed(2);
+            document.getElementById('otherSubtotal').textContent = otherTotal.toFixed(2);
+            document.getElementById('tableTotal').textContent = totalBudget.toFixed(2);
+            
+            // 更新汇总卡片
+            document.getElementById('totalBudget').textContent = '¥' + totalBudget.toLocaleString('zh-CN', {maximumFractionDigits: 0});
+            document.getElementById('laborTotal').textContent = '¥' + laborTotal.toLocaleString('zh-CN', {maximumFractionDigits: 0});
+            document.getElementById('auxTotal').textContent = '¥' + auxTotal.toLocaleString('zh-CN', {maximumFractionDigits: 0});
+            document.getElementById('mainTotal').textContent = '¥' + mainTotal.toLocaleString('zh-CN', {maximumFractionDigits: 0});
+            document.getElementById('otherTotal').textContent = '¥' + otherTotal.toLocaleString('zh-CN', {maximumFractionDigits: 0});
+            
+            // 更新百分比
+            if (totalBudget > 0) {
+                document.getElementById('laborPercent').textContent = ((laborTotal / totalBudget) * 100).toFixed(1) + '%';
+                document.getElementById('auxPercent').textContent = ((auxTotal / totalBudget) * 100).toFixed(1) + '%';
+                document.getElementById('mainPercent').textContent = ((mainTotal / totalBudget) * 100).toFixed(1) + '%';
+                document.getElementById('otherPercent').textContent = ((otherTotal / totalBudget) * 100).toFixed(1) + '%';
+            }
+            
+            // 更新平米单价
+            const pricePerSqm = totalBudget / currentArea;
+            document.getElementById('pricePerSqm').textContent = pricePerSqm.toLocaleString('zh-CN', {maximumFractionDigits: 0});
+        }
+        
+        // 重置为默认值
+        function resetDefault() {
+            if (confirm('确定要恢复默认值吗？所有修改将丢失。')) {
+                document.getElementById('area').value = 100;
+                document.getElementById('level').value = 'comfort';
+                currentLevel = 'comfort';
+                currentArea = 100;
+                generateTable();
+                calculate();
+            }
+        }
+        
+        // 导出为Excel（CSV格式）
+        function exportToExcel() {
+            let csv = '自装预算表\n\n';
+            csv += '建筑面积：' + currentArea + '平米\n';
+            csv += '装修档次：' + document.getElementById('level').selectedOptions[0].text + '\n\n';
+            csv += '序号,项目名称,单位,工程量,单价（元）,小计（元）,备注说明\n';
+            
+            const table = document.getElementById('budgetTable');
+            const rows = table.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const cells = row.querySelectorAll('td');
+                if (cells.length > 1) {
+                    let rowData = [];
+                    cells.forEach(cell => {
+                        let text = cell.textContent.trim();
+                        // 处理输入框
+                        const input = cell.querySelector('input');
+                        if (input) {
+                            text = input.value;
+                        }
+                        // 转义逗号和引号
+                        if (text.includes(',') || text.includes('"') || text.includes('\n')) {
+                            text = '"' + text.replace(/"/g, '""') + '"';
+                        }
+                        rowData.push(text);
+                    });
+                    csv += rowData.join(',') + '\n';
+                }
+            });
+            
+            // 添加汇总信息
+            csv += '\n汇总信息\n';
+            csv += '总预算,' + document.getElementById('totalBudget').textContent + '\n';
+            csv += '人工费,' + document.getElementById('laborTotal').textContent + ',' + document.getElementById('laborPercent').textContent + '\n';
+            csv += '辅材费,' + document.getElementById('auxTotal').textContent + ',' + document.getElementById('auxPercent').textContent + '\n';
+            csv += '主材费,' + document.getElementById('mainTotal').textContent + ',' + document.getElementById('mainPercent').textContent + '\n';
+            csv += '其他费用,' + document.getElementById('otherTotal').textContent + ',' + document.getElementById('otherPercent').textContent + '\n';
+            csv += '平米单价,' + document.getElementById('pricePerSqm').textContent + '元/㎡\n';
+            
+            // 创建下载链接
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', currentArea + '平米自装预算表_' + new Date().toLocaleDateString() + '.csv');
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // 保存到本地存储
+        function saveToLocalStorage() {
+            const data = {
+                level: currentLevel,
+                area: currentArea,
+                customData: {}
+            };
+            
+            // 保存所有自定义数据
+            document.querySelectorAll('.quantity').forEach(input => {
+                const key = input.dataset.key;
+                data.customData[key] = {
+                    quantity: parseFloat(input.value),
+                    price: parseFloat(document.querySelector(`.price[data-key="${key}"]`).value)
+                };
+            });
+            
+            localStorage.setItem('budgetData', JSON.stringify(data));
+            alert('预算数据已保存！');
+        }
+        
+        // 从本地存储加载
+        function loadFromLocalStorage() {
+            const savedData = localStorage.getItem('budgetData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                currentLevel = data.level;
+                currentArea = data.area;
+                
+                document.getElementById('level').value = currentLevel;
+                document.getElementById('area').value = currentArea;
+                
+                generateTable();
+                
+                // 恢复自定义数据
+                Object.keys(data.customData).forEach(key => {
+                    const quantityInput = document.querySelector(`.quantity[data-key="${key}"]`);
+                    const priceInput = document.querySelector(`.price[data-key="${key}"]`);
+                    
+                    if (quantityInput && data.customData[key].quantity !== undefined) {
+                        quantityInput.value = data.customData[key].quantity;
+                    }
+                    if (priceInput && data.customData[key].price !== undefined) {
+                        priceInput.value = data.customData[key].price;
+                    }
+                });
+                
+                calculate();
+                alert('预算数据已加载！');
+            } else {
+                alert('没有找到保存的数据！');
+            }
+        }
+        
+        // 清除本地存储
+        function clearLocalStorage() {
+            if (confirm('确定要清除所有保存的数据吗？')) {
+                localStorage.removeItem('budgetData');
+                alert('保存的数据已清除！');
+            }
+        }
+        
+        // 页面加载时初始化
+        window.onload = init;
+    </script>
+
+
+</body></html>
